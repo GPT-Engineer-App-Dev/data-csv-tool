@@ -1,13 +1,11 @@
-import React, { useState } from "react";
-import { Container, VStack, Button, Input, Table, Thead, Tbody, Tr, Th, Td, IconButton } from "@chakra-ui/react";
+import React, { useState } from 'react';
+import { Container, VStack, Text, Button, Input, Table, Thead, Tbody, Tr, Th, Td, IconButton } from "@chakra-ui/react";
 import { FaPlus, FaTrash, FaDownload } from "react-icons/fa";
-import Papa from "papaparse";
-import { CSVLink } from "react-csv";
+import Papa from 'papaparse';
 
 const Index = () => {
   const [data, setData] = useState([]);
   const [headers, setHeaders] = useState([]);
-  const [fileName, setFileName] = useState("edited_data.csv");
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -15,16 +13,17 @@ const Index = () => {
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
-        complete: (result) => {
-          setHeaders(Object.keys(result.data[0]));
-          setData(result.data);
+        complete: (results) => {
+          setHeaders(Object.keys(results.data[0]));
+          setData(results.data);
         },
       });
     }
   };
 
   const handleAddRow = () => {
-    setData([...data, {}]);
+    const newRow = headers.reduce((acc, header) => ({ ...acc, [header]: '' }), {});
+    setData([...data, newRow]);
   };
 
   const handleRemoveRow = (index) => {
@@ -32,23 +31,34 @@ const Index = () => {
     setData(newData);
   };
 
-  const handleInputChange = (index, key, value) => {
+  const handleInputChange = (index, header, value) => {
     const newData = [...data];
-    newData[index][key] = value;
+    newData[index][header] = value;
     setData(newData);
   };
 
+  const handleDownload = () => {
+    const csv = Papa.unparse(data);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'edited_data.csv');
+    link.click();
+  };
+
   return (
-    <Container centerContent maxW="container.md" height="100vh" display="flex" flexDirection="column" justifyContent="center" alignItems="center">
+    <Container centerContent maxW="container.xl" py={10}>
       <VStack spacing={4} width="100%">
+        <Text fontSize="2xl">CSV Upload, Edit, and Download Tool</Text>
         <Input type="file" accept=".csv" onChange={handleFileUpload} />
         {data.length > 0 && (
           <>
             <Table variant="simple">
               <Thead>
                 <Tr>
-                  {headers.map((header, index) => (
-                    <Th key={index}>{header}</Th>
+                  {headers.map((header) => (
+                    <Th key={header}>{header}</Th>
                   ))}
                   <Th>Actions</Th>
                 </Tr>
@@ -56,17 +66,17 @@ const Index = () => {
               <Tbody>
                 {data.map((row, rowIndex) => (
                   <Tr key={rowIndex}>
-                    {headers.map((header, colIndex) => (
-                      <Td key={colIndex}>
+                    {headers.map((header) => (
+                      <Td key={header}>
                         <Input
-                          value={row[header] || ""}
+                          value={row[header]}
                           onChange={(e) => handleInputChange(rowIndex, header, e.target.value)}
                         />
                       </Td>
                     ))}
                     <Td>
                       <IconButton
-                        aria-label="Remove Row"
+                        aria-label="Remove row"
                         icon={<FaTrash />}
                         onClick={() => handleRemoveRow(rowIndex)}
                       />
@@ -78,9 +88,9 @@ const Index = () => {
             <Button leftIcon={<FaPlus />} onClick={handleAddRow}>
               Add Row
             </Button>
-            <CSVLink data={data} headers={headers} filename={fileName}>
-              <Button leftIcon={<FaDownload />}>Download CSV</Button>
-            </CSVLink>
+            <Button leftIcon={<FaDownload />} onClick={handleDownload}>
+              Download CSV
+            </Button>
           </>
         )}
       </VStack>
